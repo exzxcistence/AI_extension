@@ -1,14 +1,10 @@
 import browser from 'webextension-polyfill';
 import { ISelectedSimplifiedItem } from '../types/SelectedNodesTypes';
 
-
-
-
-
-
 const contentText = document.getElementById("contentText")
 const LayoutPage = document.querySelector(".layout")
 
+const settingsBtn = document.getElementById("settingsBtn") as HTMLButtonElement
 
 
 
@@ -24,7 +20,7 @@ function renderHomePage(selectedText?: string) {
         ${selectedText ? selectedText : '<span class="content-placeholder">Выделите текст на странице, и он появится здесь</span>'}
       </div>
     </div>
-
+    
     <div class="action-group">
       <button class="action-btn simplify-btn" id="simplifyBtn">
         ✨ Упростить
@@ -39,7 +35,7 @@ async function renderSettingPage() {
     let { levelSelected } = await browser.storage.local.get("levelSelected")
     if (!levelSelected) levelSelected = "ADAPT_LIGHT_PROMPT"
     return `
-   <div class="settings-header">
+    <div class="settings-header">
             <h3>
                 <span>⚙️</span> Уровни упрощения
             </h3>
@@ -76,6 +72,28 @@ async function renderSettingPage() {
         </button>
     `
 }
+
+function renderSimplifyPage(contentText: string) {
+    return `
+        <div class="mode-group">
+            <button class="mode-btn" id="returnOriginalTextbtn">📄 Оригинал</button>
+            <button class="mode-btn active" id="SimplifyTextbtn">✨ Упрощённый</button>
+        </div>
+
+        <div class="content">
+            <div class="content-text" id="contentText">
+                ${contentText}
+            </div>
+        </div>
+            
+        <div class="action-group">
+            <button class="action-btn simplify-btn" id="backToMain">
+               ← На главную
+            </button>
+        </div>
+    `
+}
+
 function render(content: string) {
     if (LayoutPage)
         LayoutPage.innerHTML = content;
@@ -91,7 +109,7 @@ browser.runtime.sendMessage({ type: "GET_SELECTED_TEXT" }).then((res: string) =>
 
 
 LayoutPage?.addEventListener("click", async (event) => {
-    const target = event.target as HTMLElement
+    const target = event.target as HTMLButtonElement
 
     switch (target.id) {
         case "settingsBtn":
@@ -102,14 +120,32 @@ LayoutPage?.addEventListener("click", async (event) => {
             render(renderHomePage())
             break;
         case "simplifyBtn":
+            settingsBtn.disabled = true
+            target.disabled = true
+
             let { levelSelected } = await browser.storage.local.get("levelSelected")
             const SelectedText = await browser.runtime.sendMessage({ type: "GET_SELECTED_TEXT" })
             const SimplifiedItem = await browser.runtime.sendMessage({ type: "SIMPLIFY_TEXT", text: SelectedText, target: levelSelected }) as ISelectedSimplifiedItem
-            const contentText = document.getElementById("contentText")
-            if (!contentText) return
-            contentText.innerText = SimplifiedItem.modifiedText
+            
+            render(renderSimplifyPage(SimplifiedItem.modifiedText))
+            break
+        case "returnOriginalTextbtn":
+            const { originalText } = await browser.storage.local.get("originalText")
+
+            render(renderSimplifyPage(originalText))
+            document.getElementById("SimplifyTextbtn")?.classList.remove("active")
+            document.getElementById("returnOriginalTextbtn")?.classList.add("active")
+
+            break
+        case "SimplifyTextbtn":
+            const { modifiedText } = await browser.storage.local.get("modifiedText")
+
+            render(renderSimplifyPage(modifiedText))
+            document.getElementById("returnOriginalTextbtn")?.classList.remove("active")
+            target.classList.add("active")
             break
         case "SelectedFullPage":
+            await browser.storage.local.set({SelectedType: "SelectedFullPage"})
             const btnSelectedText = document.getElementById("SelectedText") as HTMLButtonElement
             if (!btnSelectedText) return
             btnSelectedText.classList.remove("active")
@@ -117,6 +153,7 @@ LayoutPage?.addEventListener("click", async (event) => {
 
             break
         case "SelectedText":
+            await browser.storage.local.set({SelectedType: "SelectedFullPage"})
             const bntSelectedFullPage = document.getElementById("SelectedFullPage") as HTMLButtonElement
             if (!bntSelectedFullPage) return
             bntSelectedFullPage.classList.remove("active")
