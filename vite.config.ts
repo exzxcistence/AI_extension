@@ -4,6 +4,7 @@ import webExtension, { readJsonFile } from "vite-plugin-web-extension";
 function generateManifest() {
   const manifest = readJsonFile("src/manifest.json");
   const pkg = readJsonFile("package.json");
+
   return {
     name: pkg.name,
     description: pkg.description,
@@ -13,10 +14,13 @@ function generateManifest() {
 }
 
 export default defineConfig({
+  build: {
+    emptyOutDir: true,
+  },
   plugins: [
     webExtension({
       manifest: generateManifest,
-      watchFilePaths: ["package.json", "manifest.json"],
+      watchFilePaths: ["package.json", "src/manifest.json"],
     }),
   ],
 });

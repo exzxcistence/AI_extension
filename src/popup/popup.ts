@@ -3,22 +3,6 @@ import { ISelectedSimplifiedItem } from '../types/SelectedNodesTypes';
 
 const LayoutPage = document.querySelector(".layout")
 
-let { SelectedType } = await browser.storage.local.get("SelectedType")
-if (!SelectedType) SelectedType = "SelectedText"
-
-if (SelectedType == "SelectedText") {
-    browser.runtime.sendMessage({ type: "GET_SELECTED_TEXT" }).then((selectedText: string) => {
-        renderHomePage(selectedText).then(res => {
-            render(res)
-        })
-    })
-} else {
-    browser.runtime.sendMessage({ type: "GET_FULLTEXT_PAGE" }).then((selectedText: string) => {
-        renderHomePage(selectedText).then(res => {
-            render(res)
-        })
-    })
-}
 
 async function renderHomePage(selectedText?: string) {
     let { SelectedType } = await browser.storage.local.get("SelectedType")

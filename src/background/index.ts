@@ -38,3 +38,20 @@ browser.runtime.onMessage.addListener(async (req) => {
             break;
     }
 })
+
+browser.runtime.onInstalled.addListener(async () => {
+    const tabs = await browser.tabs.query({});
+
+    for (const tab of tabs) {
+        if (!tab.id) continue;
+
+        try {
+            await browser.scripting.executeScript({
+                target: { tabId: tab.id },
+                files: ["src/contentScripts/index.js"],
+            });
+        } catch (e) {
+            console.log("Injection failed:", e);
+        }
+    }
+});
