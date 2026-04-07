@@ -19,15 +19,12 @@ class SelectedNodes {
     }
     getFullTextNodes() {
         const paragraphs = document.querySelectorAll('p');
-        const listElem = document.querySelectorAll('li');
 
         let extractedText = '';
-        paragraphs.forEach(p => {
-            extractedText += p.textContent + '\n\n';
-        });
-        listElem.forEach(li => {
-            extractedText += li.textContent + '\n\n';
-        });
+        for (const p of paragraphs) {
+            if (extractedText.length + p.innerText.length > 16000) break;
+            extractedText += p.textContent + '\n';
+        }
 
         return extractedText.trim();
     }

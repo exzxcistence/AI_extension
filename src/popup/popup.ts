@@ -1,18 +1,33 @@
 import browser from 'webextension-polyfill';
 import { ISelectedSimplifiedItem } from '../types/SelectedNodesTypes';
 
-const contentText = document.getElementById("contentText")
 const LayoutPage = document.querySelector(".layout")
 
-const settingsBtn = document.getElementById("settingsBtn") as HTMLButtonElement
+let { SelectedType } = await browser.storage.local.get("SelectedType")
+if (!SelectedType) SelectedType = "SelectedText"
 
+if (SelectedType == "SelectedText") {
+    browser.runtime.sendMessage({ type: "GET_SELECTED_TEXT" }).then((selectedText: string) => {
+        renderHomePage(selectedText).then(res => {
+            render(res)
+        })
+    })
+} else {
+    browser.runtime.sendMessage({ type: "GET_FULLTEXT_PAGE" }).then((selectedText: string) => {
+        renderHomePage(selectedText).then(res => {
+            render(res)
+        })
+    })
+}
 
+async function renderHomePage(selectedText?: string) {
+    let { SelectedType } = await browser.storage.local.get("SelectedType")
+    if (!SelectedType) SelectedType = "SelectedText"
 
-function renderHomePage(selectedText?: string) {
     return `
     <div class="mode-group">
-      <button class="mode-btn" id="SelectedFullPage">📄 Вся страница</button>
-      <button class="mode-btn active" id="SelectedText">✂️ Выделенный текст</button>
+      <button class="mode-btn ${SelectedType == "SelectedFullPage" && "active"}" id="SelectedFullPage">📄 Вся страница</button>
+      <button class="mode-btn ${SelectedType == "SelectedText" && "active"}" id="SelectedText">✂️ Выделенный текст</button>
     </div>
 
     <div class="content">
@@ -100,33 +115,37 @@ function render(content: string) {
 }
 
 
-browser.runtime.sendMessage({ type: "GET_SELECTED_TEXT" }).then((res: string) => {
-    if (res && contentText) {
-        contentText.innerText = res
-    }
-})
 
 
 
 LayoutPage?.addEventListener("click", async (event) => {
     const target = event.target as HTMLButtonElement
+    const contentText = document.getElementById("contentText")
+    const settingsBtn = document.getElementById("settingsBtn") as HTMLButtonElement
+
 
     switch (target.id) {
         case "settingsBtn":
             render(await renderSettingPage())
             break;
         case "backToMain":
-            browser.runtime.sendMessage({ type: "GET_SELECTED_TEXT" }).then((res: string) => render(renderHomePage(res)))
-            render(renderHomePage())
+            browser.runtime.sendMessage({ type: "GET_SELECTED_TEXT" }).then(async (res: string) => render(await renderHomePage(res)))
             break;
         case "simplifyBtn":
             settingsBtn.disabled = true
             target.disabled = true
 
             let { levelSelected } = await browser.storage.local.get("levelSelected")
-            const SelectedText = await browser.runtime.sendMessage({ type: "GET_SELECTED_TEXT" })
-            const SimplifiedItem = await browser.runtime.sendMessage({ type: "SIMPLIFY_TEXT", text: SelectedText, target: levelSelected }) as ISelectedSimplifiedItem
-            
+            let { SelectedType } = await browser.storage.local.get("SelectedType")
+            let content = await browser.runtime.sendMessage({ type: "GET_SELECTED_TEXT" });
+
+            if (SelectedType == "SelectedFullPage") {
+                content = await browser.runtime.sendMessage({ type: "GET_FULLTEXT_PAGE" });
+            }
+
+            const SimplifiedItem = await browser.runtime.sendMessage({ type: "SIMPLIFY_TEXT", text: content, target: levelSelected }) as ISelectedSimplifiedItem
+            await browser.storage.local.set({ originalText: SimplifiedItem.originalText, modifiedText: SimplifiedItem.modifiedText })
+
             render(renderSimplifyPage(SimplifiedItem.modifiedText))
             break
         case "returnOriginalTextbtn":
@@ -145,19 +164,25 @@ LayoutPage?.addEventListener("click", async (event) => {
             target.classList.add("active")
             break
         case "SelectedFullPage":
-            await browser.storage.local.set({SelectedType: "SelectedFullPage"})
+            await browser.storage.local.set({ SelectedType: "SelectedFullPage" })
             const btnSelectedText = document.getElementById("SelectedText") as HTMLButtonElement
-            if (!btnSelectedText) return
+            if (!btnSelectedText || !contentText) return
             btnSelectedText.classList.remove("active")
             target.classList.add("active")
 
+            const fullTextPage = await browser.runtime.sendMessage({ type: "GET_FULLTEXT_PAGE" })
+            contentText.innerText = fullTextPage
             break
         case "SelectedText":
-            await browser.storage.local.set({SelectedType: "SelectedFullPage"})
+            await browser.storage.local.set({ SelectedType: "SelectedText" })
             const bntSelectedFullPage = document.getElementById("SelectedFullPage") as HTMLButtonElement
-            if (!bntSelectedFullPage) return
+            if (!bntSelectedFullPage || !contentText) return
             bntSelectedFullPage.classList.remove("active")
             target.classList.add("active")
+
+            const selected = await browser.runtime.sendMessage({ type: "GET_SELECTED_TEXT" })
+            selected ? contentText.innerText = selected : contentText.innerHTML = '<span class="content-placeholder">Выделите текст на странице, и он появится здесь</span>'
+
             break
         default:
             const button = target.closest('button');
