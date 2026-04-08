@@ -3,13 +3,29 @@ import { ISelectedSimplifiedItem } from '../types/SelectedNodesTypes';
 
 const LayoutPage = document.querySelector(".layout")
 
+document.addEventListener('DOMContentLoaded', async () => {
+    let { SelectedType } = await browser.storage.local.get("SelectedType")
+    if (!SelectedType) SelectedType = "SelectedText"
+
+    if (SelectedType == "SelectedText") {
+        browser.runtime.sendMessage({ type: "GET_SELECTED_TEXT" }).then(async (selectedText: string) => {
+            render(await renderHomePage(selectedText))
+        })
+    } else {
+        browser.runtime.sendMessage({ type: "GET_FULLTEXT_PAGE" }).then(async (selectedText: string) => {
+            render(await renderHomePage(selectedText))
+        })
+    }
+});
+
+
 
 async function renderHomePage(selectedText?: string) {
     let { SelectedType } = await browser.storage.local.get("SelectedType")
     if (!SelectedType) SelectedType = "SelectedText"
 
     return `
-    <div class="mode-group">
+    <div class="mode-group" id="SelectedTypeGroup">
       <button class="mode-btn ${SelectedType == "SelectedFullPage" && "active"}" id="SelectedFullPage">📄 Вся страница</button>
       <button class="mode-btn ${SelectedType == "SelectedText" && "active"}" id="SelectedText">✂️ Выделенный текст</button>
     </div>
@@ -97,9 +113,6 @@ function render(content: string) {
     if (LayoutPage)
         LayoutPage.innerHTML = content;
 }
-
-
-
 
 
 LayoutPage?.addEventListener("click", async (event) => {

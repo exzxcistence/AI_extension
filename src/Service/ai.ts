@@ -10,7 +10,7 @@ class AIService {
   constructor() {
     this.completion = new OpenAI({
       baseURL: 'https://openrouter.ai/api/v1',
-      apiKey: "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",
+      apiKey: "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",
       dangerouslyAllowBrowser: true
     })
     this.ADAPT_LIGHT_PROMPT = "Упрости следующий текст. Сделай лёгкое упрощение — сохрани стиль, структуру и смысл, но сделай формулировки более понятными, убери сложные конструкции. Важно: не искажай смысл, не добавляй новую информацию, сохрани структуру (если есть абзацы — оставь абзацы). Верни только текст без комментариев. Текст: "
