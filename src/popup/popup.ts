@@ -18,7 +18,26 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 });
 
+function renderErrorPage() {
+    return `
+        <div class="error-container" id="errorContainer">
+            <div class="error-icon">⚠️</div>
+            <h3 class="error-title">Ошибка</h3>
+            <p class="error-message" id="errorMessage">Не удалось упростить текст. Попробуйте ещё раз.</p>
+            <button class="error-back-btn" id="backToMain">
+                ← Вернуться в меню
+            </button>
+        </div>
+    `
+}
 
+function renderProloader() {
+    return `
+        <div class="preloader">
+            <div class="spinner"></div>
+        </div>
+    `
+}
 
 async function renderHomePage(selectedText?: string) {
     let { SelectedType } = await browser.storage.local.get("SelectedType")
@@ -118,32 +137,39 @@ function render(content: string) {
 LayoutPage?.addEventListener("click", async (event) => {
     const target = event.target as HTMLButtonElement
     const contentText = document.getElementById("contentText")
-    const settingsBtn = document.getElementById("settingsBtn") as HTMLButtonElement
-
 
     switch (target.id) {
         case "settingsBtn":
             render(await renderSettingPage())
             break;
         case "backToMain":
+            browser.storage.local.get("SelectedType").then(res => {
+                if (res.SelectedType == "SelectedFullPage") {
+                    return browser.runtime.sendMessage({ type: "GET_FULLTEXT_PAGE" }).then(async (res: string) => render(await renderHomePage(res)))
+                }
+            })
             browser.runtime.sendMessage({ type: "GET_SELECTED_TEXT" }).then(async (res: string) => render(await renderHomePage(res)))
             break;
         case "simplifyBtn":
-            settingsBtn.disabled = true
-            target.disabled = true
+            render(renderProloader())
+            try {
+                let { levelSelected } = await browser.storage.local.get("levelSelected")
+                let { SelectedType } = await browser.storage.local.get("SelectedType")
+                let content = await browser.runtime.sendMessage({ type: "GET_SELECTED_TEXT" });
 
-            let { levelSelected } = await browser.storage.local.get("levelSelected")
-            let { SelectedType } = await browser.storage.local.get("SelectedType")
-            let content = await browser.runtime.sendMessage({ type: "GET_SELECTED_TEXT" });
+                if (SelectedType == "SelectedFullPage") {
+                    content = await browser.runtime.sendMessage({ type: "GET_FULLTEXT_PAGE" });
+                }
 
-            if (SelectedType == "SelectedFullPage") {
-                content = await browser.runtime.sendMessage({ type: "GET_FULLTEXT_PAGE" });
+                if (!content) throw new Error()
+
+                const SimplifiedItem = await browser.runtime.sendMessage({ type: "SIMPLIFY_TEXT", text: content, target: levelSelected }) as ISelectedSimplifiedItem
+                await browser.storage.local.set({ originalText: SimplifiedItem.originalText, modifiedText: SimplifiedItem.modifiedText })
+
+                render(renderSimplifyPage(SimplifiedItem.modifiedText))
+            } catch (error) {
+                render(renderErrorPage())
             }
-
-            const SimplifiedItem = await browser.runtime.sendMessage({ type: "SIMPLIFY_TEXT", text: content, target: levelSelected }) as ISelectedSimplifiedItem
-            await browser.storage.local.set({ originalText: SimplifiedItem.originalText, modifiedText: SimplifiedItem.modifiedText })
-
-            render(renderSimplifyPage(SimplifiedItem.modifiedText))
             break
         case "returnOriginalTextbtn":
             const { originalText } = await browser.storage.local.get("originalText")
@@ -194,4 +220,6 @@ LayoutPage?.addEventListener("click", async (event) => {
             }
             break;
     }
+
 })
+
