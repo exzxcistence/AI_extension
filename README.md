@@ -17,4 +17,4 @@
 | 💻 Разработчик | Хайранов Арсен | [aRsenToim](https://github.com/aRsenToim) |
 | 📊 Аналитик | Еремеев Иван | [vahne002](https://github.com/vahne002) |
 | 🎨 Дизайнер | Деркач Анастасия | [dsdsfqswq](https://github.com/dsdsfqswq) |
-| 🎨 Дизайнер | Кудирмеков Константин | [dsdsfqswq](https://github.com/dsdsfqswq) |
+| 🎨 Дизайнер | Кудирмеков Константин | [kostyakudirmerkov-boop]((https://github.com/kostyakudirmerkov-boop)) |
