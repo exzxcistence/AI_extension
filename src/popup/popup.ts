@@ -1,113 +1,27 @@
 import browser from 'webextension-polyfill';
 import { ISelectedSimplifiedItem } from '../types/SelectedNodesTypes';
+import { renderHomePage } from './Components/HomePage';
+import { renderErrorPage } from './Components/ErrorPage';
+import { renderSettingPage } from './Components/SettingPage';
+import { renderProloader } from './Components/Preloader';
+import { renderSimplifyPage } from './Components/SimplifyPage';
 
 const LayoutPage = document.querySelector(".layout")
+
 
 document.addEventListener('DOMContentLoaded', async () => {
     let { SelectedType } = await browser.storage.local.get("SelectedType")
     if (!SelectedType) SelectedType = "SelectedText"
-
     if (SelectedType == "SelectedText") {
         browser.runtime.sendMessage({ type: "GET_SELECTED_TEXT" }).then(async (selectedText: string) => {
-            render(await renderHomePage(selectedText))
+            render(await renderHomePage(SelectedType, selectedText))
         })
     } else {
         browser.runtime.sendMessage({ type: "GET_FULLTEXT_PAGE" }).then(async (selectedText: string) => {
-            render(await renderHomePage(selectedText))
+            render(await renderHomePage(SelectedType, selectedText))
         })
     }
 });
-
-
-
-async function renderHomePage(selectedText?: string) {
-    let { SelectedType } = await browser.storage.local.get("SelectedType")
-    if (!SelectedType) SelectedType = "SelectedText"
-
-    return `
-    <div class="mode-group" id="SelectedTypeGroup">
-      <button class="mode-btn ${SelectedType == "SelectedFullPage" && "active"}" id="SelectedFullPage">📄 Вся страница</button>
-      <button class="mode-btn ${SelectedType == "SelectedText" && "active"}" id="SelectedText">✂️ Выделенный текст</button>
-    </div>
-
-    <div class="content">
-      <div class="content-text" id="contentText">
-        ${selectedText ? selectedText : '<span class="content-placeholder">Выделите текст на странице, и он появится здесь</span>'}
-      </div>
-    </div>
-    
-    <div class="action-group">
-      <button class="action-btn simplify-btn" id="simplifyBtn">
-        ✨ Упростить
-      </button>
-      <button class="action-btn settings-btn" id="settingsBtn">
-        ⚙️ Настройки
-      </button>
-    </div>
-    `
-}
-async function renderSettingPage() {
-    let { levelSelected } = await browser.storage.local.get("levelSelected")
-    if (!levelSelected) levelSelected = "ADAPT_LIGHT_PROMPT"
-    return `
-    <div class="settings-header">
-            <h3>
-                <span>⚙️</span> Уровни упрощения
-            </h3>
-        </div>
-
-        <div class="simplify-levels">
-            <button class="level-btn ${levelSelected == "ADAPT_LIGHT_PROMPT" && "active"}" id="ADAPT_LIGHT_PROMPT">
-                <span class="level-emoji">📖</span>
-                <div class="level-title">
-                    Простое упрощение
-                    <div class="level-desc">Объясни как пятикласснику</div>
-                </div>
-            </button>
-
-            <button class="level-btn ${levelSelected == "ADAPT_MEDIUM_PROMPT" && "active"}" id="ADAPT_MEDIUM_PROMPT">
-                <span class="level-emoji">🎓</span>
-                <div class="level-title">
-                    Среднее упрощение
-                    <div class="level-desc">Упрости до базового уровня</div>
-                </div>
-            </button>
-
-            <button class="level-btn ${levelSelected == "ADAPT_MAX_PROMPT" && "active"}" id="ADAPT_MAX_PROMPT">
-                <span class="level-emoji">⚡</span>
-                <div class="level-title">
-                    Максимальное упрощение
-                    <div class="level-desc">Сохрани суть, убери термины</div>
-                </div>
-            </button>
-        </div>
-
-        <button class="back-btn" id="backToMain">
-            ← На главную
-        </button>
-    `
-}
-
-function renderSimplifyPage(contentText: string) {
-    return `
-        <div class="mode-group">
-            <button class="mode-btn" id="returnOriginalTextbtn">📄 Оригинал</button>
-            <button class="mode-btn active" id="SimplifyTextbtn">✨ Упрощённый</button>
-        </div>
-
-        <div class="content">
-            <div class="content-text" id="contentText">
-                ${contentText}
-            </div>
-        </div>
-            
-        <div class="action-group">
-            <button class="action-btn simplify-btn" id="backToMain">
-               ← На главную
-            </button>
-        </div>
-    `
-}
 
 function render(content: string) {
     if (LayoutPage)
@@ -118,32 +32,41 @@ function render(content: string) {
 LayoutPage?.addEventListener("click", async (event) => {
     const target = event.target as HTMLButtonElement
     const contentText = document.getElementById("contentText")
-    const settingsBtn = document.getElementById("settingsBtn") as HTMLButtonElement
-
 
     switch (target.id) {
         case "settingsBtn":
-            render(await renderSettingPage())
+            let { levelSelected } = await browser.storage.local.get("levelSelected")
+            if (!levelSelected) levelSelected = "ADAPT_LIGHT_PROMPT"
+            render(await renderSettingPage(levelSelected))
             break;
         case "backToMain":
-            browser.runtime.sendMessage({ type: "GET_SELECTED_TEXT" }).then(async (res: string) => render(await renderHomePage(res)))
+            browser.storage.local.get("SelectedType").then(res => {
+                if (res.SelectedType == "SelectedFullPage") {
+                    return browser.runtime.sendMessage({ type: "GET_FULLTEXT_PAGE" }).then(async (res: string) => render(await renderHomePage("SelectedFullPage", res)))
+                }
+            })
+            browser.runtime.sendMessage({ type: "GET_SELECTED_TEXT" }).then(async (res: string) => render(await renderHomePage("SelectedText", res)))
             break;
         case "simplifyBtn":
-            settingsBtn.disabled = true
-            target.disabled = true
+            render(renderProloader())
+            try {
+                let { levelSelected } = await browser.storage.local.get("levelSelected")
+                let { SelectedType } = await browser.storage.local.get("SelectedType")
+                let content = await browser.runtime.sendMessage({ type: "GET_SELECTED_TEXT" });
 
-            let { levelSelected } = await browser.storage.local.get("levelSelected")
-            let { SelectedType } = await browser.storage.local.get("SelectedType")
-            let content = await browser.runtime.sendMessage({ type: "GET_SELECTED_TEXT" });
+                if (SelectedType == "SelectedFullPage") {
+                    content = await browser.runtime.sendMessage({ type: "GET_FULLTEXT_PAGE" });
+                }
 
-            if (SelectedType == "SelectedFullPage") {
-                content = await browser.runtime.sendMessage({ type: "GET_FULLTEXT_PAGE" });
+                if (!content) throw new Error()
+
+                const SimplifiedItem = await browser.runtime.sendMessage({ type: "SIMPLIFY_TEXT", text: content, target: levelSelected }) as ISelectedSimplifiedItem
+                await browser.storage.local.set({ originalText: SimplifiedItem.originalText, modifiedText: SimplifiedItem.modifiedText })
+
+                render(renderSimplifyPage(SimplifiedItem.modifiedText))
+            } catch (error) {
+                render(renderErrorPage())
             }
-
-            const SimplifiedItem = await browser.runtime.sendMessage({ type: "SIMPLIFY_TEXT", text: content, target: levelSelected }) as ISelectedSimplifiedItem
-            await browser.storage.local.set({ originalText: SimplifiedItem.originalText, modifiedText: SimplifiedItem.modifiedText })
-
-            render(renderSimplifyPage(SimplifiedItem.modifiedText))
             break
         case "returnOriginalTextbtn":
             const { originalText } = await browser.storage.local.get("originalText")
@@ -194,4 +117,6 @@ LayoutPage?.addEventListener("click", async (event) => {
             }
             break;
     }
+
 })
+
