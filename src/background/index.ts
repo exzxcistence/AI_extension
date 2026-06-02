@@ -34,10 +34,6 @@ browser.runtime.onMessage.addListener(async (req) => {
                 modifiedText: text
             }
             break
-
-        case "KEYBOARD_SIMPLIFY":
-
-            break
         default:
             break;
     }

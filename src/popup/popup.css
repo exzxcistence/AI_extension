@@ -245,3 +245,13 @@ body {
     color: white;
     font-family: inherit;
 }
+.simplify-main{
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+}
+
+.simplify-image{
+    width: 97px;
+    height: 220px;
+}
