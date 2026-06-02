@@ -1,4 +1,4 @@
-# AI EXTENSION
+# ivANUS_AI
 
 ![Vite Plugin Web Extension](https://img.shields.io/badge/Vite_Plugin_Web_Extension-646CFF?style=for-the-badge&logo=vite&logoColor=white)
 ![TypeScript](https://img.shields.io/badge/TypeScript-3178C6?style=for-the-badge&logo=typescript&logoColor=white)
