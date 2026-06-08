@@ -1,7 +1,7 @@
 export function renderProloader() {
     return `
         <div class="preloader">
-            <div class="spinner"></div>
+            <img src="/mascot_loading.gif" class="preloader-mascot" alt="Loading..." />
         </div>
     `
 }

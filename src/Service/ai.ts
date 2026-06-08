@@ -21,7 +21,7 @@ class AIService {
 
   async SimplificationText(selectedText: string, target: levelSimplifyTypes = "ADAPT_LIGHT_PROMPT") {
     const res = await this.completion.chat.completions.create({
-      model: 'openrouter/free',
+      model: 'google/gemma-4-31b-it:free',
       messages: [
         { role: 'user', content: (this[target] + selectedText) }
       ]
